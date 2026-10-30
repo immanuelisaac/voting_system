@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>VoteSecure — Online Voting System</title>
+<meta name="description" content="Secure anonymous online voting with real-time results"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#07070f;--bg2:#0d0d1a;--surface:rgba(255,255,255,0.04);--surface-h:rgba(255,255,255,0.08);--border:rgba(255,255,255,0.08);--border-h:rgba(108,99,255,0.5);--primary:#6c63ff;--cyan:#00d4ff;--pink:#ff6584;--green:#00e676;--yellow:#ffd740;--text:#e8e8ff;--text-dim:rgba(232,232,255,0.5);--text-muted:rgba(232,232,255,0.3);--radius:16px;--radius-sm:10px;--shadow:0 8px 32px rgba(0,0,0,0.4);--glow:0 0 40px rgba(108,99,255,0.15)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before,body::after{content:'';position:fixed;border-radius:50%;filter:blur(120px);opacity:.1;pointer-events:none;z-index:0;animation:orb 12s ease-in-out infinite alternate}
+body::before{width:600px;height:600px;background:radial-gradient(circle,var(--primary),transparent);top:-200px;left:-200px}
+body::after{width:500px;height:500px;background:radial-gradient(circle,var(--cyan),transparent);bottom:-200px;right:-200px;animation-delay:-6s}
+@keyframes orb{from{transform:translate(0,0) scale(1)}to{transform:translate(60px,40px) scale(1.1)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes slideup{from{opacity:0;transform:translateY(30px) scale(.95)}to{opacity:1;transform:none}}
+@keyframes toastin{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--primary);border-radius:4px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:border-color .3s,box-shadow .3s,transform .3s}
+.card:hover{border-color:var(--border-h);box-shadow:var(--glow)}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:var(--radius-sm);font-family:inherit;font-size:.9rem;font-weight:600;cursor:pointer;border:none;transition:all .25s;text-decoration:none;white-space:nowrap}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--cyan));color:#fff;box-shadow:0 4px 20px rgba(108,99,255,0.4)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(108,99,255,0.6)}
+.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary);background:rgba(108,99,255,0.08)}
+.btn-danger{background:rgba(255,101,132,0.15);color:var(--pink);border:1px solid rgba(255,101,132,0.3)}
+.btn-sm{padding:8px 16px;font-size:.8rem}.btn-full{width:100%;justify-content:center}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+.input-group{display:flex;flex-direction:column;gap:6px}
+.input-group label{font-size:.85rem;font-weight:500;color:var(--text-dim)}
+.input{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;color:var(--text);font-family:inherit;font-size:.95rem;transition:border-color .25s,box-shadow .25s;width:100%}
+.input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(108,99,255,0.15)}
+.input::placeholder{color:var(--text-muted)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.badge-active{background:rgba(0,230,118,0.15);color:var(--green);border:1px solid rgba(0,230,118,0.3)}
+.badge-closed{background:rgba(255,215,64,0.12);color:var(--yellow);border:1px solid rgba(255,215,64,0.25)}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
+.spinner{width:20px;height:20px;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+#toast-container{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:10px;z-index:9999}
+.toast{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 20px;min-width:280px;max-width:360px;display:flex;align-items:center;gap:12px;font-size:.88rem;font-weight:500;animation:toastin .3s cubic-bezier(.34,1.56,.64,1);box-shadow:var(--shadow)}
+.toast-success{border-left:3px solid var(--green)}.toast-error{border-left:3px solid var(--pink)}.toast-info{border-left:3px solid var(--cyan)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadein .2s}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:20px;width:100%;max-width:520px;padding:32px;position:relative;animation:slideup .3s cubic-bezier(.34,1.56,.64,1);box-shadow:0 24px 80px rgba(0,0,0,0.6)}
+.modal-close{position:absolute;top:16px;right:16px;background:var(--surface);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;color:var(--text-dim);cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.modal-close:hover{background:var(--surface-h);color:var(--text)}
+.page-loader{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9998;flex-direction:column;gap:20px;transition:opacity .5s}
+.logo-float{font-size:3rem;animation:float 3s ease-in-out infinite}
+#auth-page{display:none;align-items:center;justify-content:center;min-height:100vh;padding:24px;position:relative;z-index:1}
+#auth-page.active{display:flex;animation:fadein .4s}
+.auth-box{width:100%;max-width:440px}
+.auth-logo{text-align:center;margin-bottom:40px}
+.auth-logo-icon{font-size:3.5rem;display:block;margin-bottom:12px;filter:drop-shadow(0 0 20px rgba(108,99,255,.6));animation:float 3s ease-in-out infinite}
+.auth-logo h1{font-size:2rem;background:linear-gradient(135deg,#fff 0%,var(--primary) 60%,var(--cyan) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:800}
+.auth-tabs{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:4px;margin-bottom:28px}
+.auth-tab{flex:1;padding:10px;text-align:center;border-radius:8px;cursor:pointer;font-size:.88rem;font-weight:600;color:var(--text-dim);transition:all .25s;border:none;background:none;font-family:inherit}
+.auth-tab.active{background:linear-gradient(135deg,var(--primary),var(--cyan));color:#fff;box-shadow:0 4px 16px rgba(108,99,255,.4)}
+.auth-form-panel{display:none}.auth-form-panel.active{display:flex;flex-direction:column;gap:18px}
+#dashboard-page{display:none;flex-direction:column;position:relative;z-index:1;min-height:100vh}
+#dashboard-page.active{display:flex;animation:fadein .4s}
+.navbar{position:sticky;top:0;z-index:100;background:rgba(7,7,15,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between}
+.nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.1rem}
+.nav-grad{background:linear-gradient(135deg,var(--primary),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--cyan));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:#fff}
+.dashboard-body{flex:1;padding:40px 32px;max-width:1200px;width:100%;margin:0 auto}
+.dashboard-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:36px;gap:20px;flex-wrap:wrap}
+.dashboard-header h2{font-size:1.8rem;font-weight:800}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:36px}
+.stat-card{padding:20px 24px;display:flex;align-items:center;gap:16px}
+.stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0}
+.si-p{background:rgba(108,99,255,.15)}.si-c{background:rgba(0,212,255,.12)}.si-g{background:rgba(0,230,118,.12)}
+.stat-val{font-size:1.8rem;font-weight:800;line-height:1}.stat-label{font-size:.78rem;color:var(--text-dim);margin-top:2px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.section-title{font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim)}
+.elections-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px}
+.election-card{padding:24px;position:relative;overflow:hidden;transition:transform .3s,border-color .3s,box-shadow .3s}
+.election-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--primary),var(--cyan));opacity:0;transition:opacity .3s}
+.election-card:hover{transform:translateY(-4px)}.election-card:hover::before{opacity:1}
+.election-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:12px}
+.election-title{font-size:1rem;font-weight:700;line-height:1.3}
+.election-desc{font-size:.82rem;color:var(--text-dim);margin-bottom:18px;line-height:1.5}
+.election-meta{display:flex;gap:16px;font-size:.8rem;color:var(--text-muted);border-top:1px solid var(--border);padding-top:14px}
+.election-actions{display:flex;gap:8px;margin-top:16px}
+.empty-state{text-align:center;padding:80px 20px;color:var(--text-dim)}
+.empty-icon{font-size:4rem;margin-bottom:16px;opacity:.4;display:block}
+.candidate-list{display:flex;flex-direction:column;gap:10px;margin:20px 0}
+.candidate-option{display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--radius-sm);border:2px solid var(--border);cursor:pointer;transition:all .25s}
+.candidate-option:hover{border-color:var(--primary);background:rgba(108,99,255,.06)}
+.candidate-option.selected{border-color:var(--primary);background:rgba(108,99,255,.12);box-shadow:0 0 0 3px rgba(108,99,255,.15)}
+.radio-dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .25s}
+.candidate-option.selected .radio-dot{border-color:var(--primary);background:var(--primary)}
+.candidate-option.selected .radio-dot::after{content:'';width:8px;height:8px;border-radius:50%;background:#fff}
+.cname{font-weight:600;font-size:.95rem}.cnum{margin-left:auto;width:32px;height:32px;border-radius:8px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:var(--text-dim);flex-shrink:0}
+.results-list{display:flex;flex-direction:column;gap:16px;margin-top:20px}
+.result-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.result-name{font-weight:600;font-size:.9rem;display:flex;align-items:center;gap:8px}
+.rrank{width:22px;height:22px;border-radius:6px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700}
+.rrank.gold{background:rgba(255,215,64,.15);color:var(--yellow);border-color:rgba(255,215,64,.3)}
+.rrank.silver{background:rgba(192,192,192,.1);color:#ccc;border-color:rgba(192,192,192,.2)}
+.rrank.bronze{background:rgba(205,127,50,.1);color:#cd7f32;border-color:rgba(205,127,50,.2)}
+.rbar-track{height:8px;background:var(--surface);border-radius:4px;overflow:hidden}
+.rbar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--primary),var(--cyan));width:0%;transition:width 1s cubic-bezier(.34,1.56,.64,1)}
+.rbar.gold{background:linear-gradient(90deg,var(--yellow),#ffa000)}
+.pnote{background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2);border-radius:10px;padding:12px 16px;font-size:.82rem;color:var(--text-dim);margin-bottom:4px}
+@media(max-width:768px){.navbar{padding:0 16px}.dashboard-body{padding:24px 16px}.elections-grid{grid-template-columns:1fr}.stats-row{grid-template-columns:1fr 1fr}.modal{padding:24px}}
+@media(max-width:480px){.stats-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div class="page-loader" id="loader"><div class="logo-float">🗳️</div><div class="spinner"></div></div>
+
+<!-- AUTH -->
+<div id="auth-page">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <span class="auth-logo-icon">🗳️</span>
+      <h1>VoteSecure</h1>
+      <p style="color:var(--text-dim);font-size:.9rem;margin-top:6px">Anonymous, tamper-proof online voting</p>
+    </div>
+    <div class="card" style="padding:28px">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Sign In</button>
+        <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Register</button>
+      </div>
+      <div class="auth-form-panel active" id="panel-login">
+        <div class="input-group"><label>Username</label><input class="input" id="login-username" type="text" placeholder="Enter your username"/></div>
+        <div class="input-group"><label>Password</label><input class="input" id="login-password" type="password" placeholder="Enter your password"/></div>
+        <button class="btn btn-primary btn-full" id="login-btn" onclick="handleLogin()">Sign In</button>
+        <p style="text-align:center;font-size:.8rem;color:var(--text-dim)">No account? <a href="#" style="color:var(--primary)" onclick="switchTab('register')">Register</a></p>
+      </div>
+      <div class="auth-form-panel" id="panel-register">
+        <div class="input-group"><label>Username</label><input class="input" id="reg-username" type="text" placeholder="Choose a username"/></div>
+        <div class="input-group"><label>Email</label><input class="input" id="reg-email" type="email" placeholder="your@email.com"/></div>
+        <div class="input-group"><label>Password</label><input class="input" id="reg-password" type="password" placeholder="Min 6 characters"/></div>
+        <button class="btn btn-primary btn-full" id="register-btn" onclick="handleRegister()">Create Account</button>
+        <p style="text-align:center;font-size:.8rem;color:var(--text-dim)">Have account? <a href="#" style="color:var(--primary)" onclick="switchTab('login')">Sign in</a></p>
+      </div>
+    </div>
+    <p style="text-align:center;font-size:.75rem;margin-top:20px;color:var(--text-muted)">🔒 Identity and ballot stored separately — your vote is always anonymous</p>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard-page">
+  <nav class="navbar">
+    <div class="nav-brand"><span>🗳️</span><span class="nav-grad">VoteSecure</span></div>
+    <div class="nav-right">
+      <span style="font-size:.88rem;color:var(--text-dim)" id="nav-username"></span>
+      <button class="btn btn-outline btn-sm" onclick="handleLogout()">Sign Out</button>
+      <div class="nav-avatar" id="nav-avatar">?</div>
+    </div>
+  </nav>
+  <div class="dashboard-body">
+    <div class="dashboard-header">
+      <div><h2>Elections Dashboard</h2><p style="margin-top:4px;font-size:.9rem">Participate in active elections and view live results</p></div>
+      <button class="btn btn-primary" id="create-btn" onclick="openCreate()" style="display:none">+ New Election</button>
+    </div>
+    <div class="stats-row">
+      <div class="card stat-card"><div class="stat-icon si-p">🗳️</div><div><div class="stat-val" id="stat-total">—</div><div class="stat-label">Total Elections</div></div></div>
+      <div class="card stat-card"><div class="stat-icon si-c">⚡</div><div><div class="stat-val" id="stat-active">—</div><div class="stat-label">Active Now</div></div></div>
+      <div class="card stat-card"><div class="stat-icon si-g">👥</div><div><div class="stat-val" id="stat-cands">—</div><div class="stat-label">Total Candidates</div></div></div>
+    </div>
+    <div class="section-header">
+      <span class="section-title">All Elections</span>
+      <button class="btn btn-outline btn-sm" onclick="loadElections()">↻ Refresh</button>
+    </div>
+    <div class="elections-grid" id="elections-grid"><div class="empty-state"><span class="empty-icon">🔄</span><h3>Loading...</h3></div></div>
+  </div>
+</div>
+
+<!-- VOTE MODAL -->
+<div class="modal-overlay" id="vote-modal" style="display:none" onclick="closeModal('vote-modal',event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('vote-modal')">&#x2715;</button>
+    <h2 id="vote-title" style="margin-bottom:6px">Cast Your Vote</h2>
+    <p id="vote-desc" style="font-size:.88rem;margin-bottom:14px;color:var(--text-dim)"></p>
+    <div class="pnote">🔒 <strong style="color:var(--text)">Your vote is anonymous.</strong> We record that you voted — not who you voted for.</div>
+    <div class="candidate-list" id="candidate-list"></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-outline" style="flex:1" onclick="closeModal('vote-modal')">Cancel</button>
+      <button class="btn btn-primary" style="flex:2" id="submit-vote-btn" onclick="submitVote()" disabled>Cast My Vote</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS MODAL -->
+<div class="modal-overlay" id="results-modal" style="display:none" onclick="closeModal('results-modal',event)">
+  <div class="modal" style="max-width:580px">
+    <button class="modal-close" onclick="closeModal('results-modal')">&#x2715;</button>
+    <h2 id="res-title" style="margin-bottom:4px">Live Results</h2>
+    <p style="font-size:.85rem;color:var(--text-dim)" id="res-sub"></p>
+    <div style="font-size:.8rem;color:var(--text-muted);margin:6px 0" id="res-total"></div>
+    <div class="results-list" id="results-list"></div>
+    <button class="btn btn-outline btn-full" style="margin-top:20px" onclick="closeModal('results-modal')">Close</button>
+  </div>
+</div>
+
+<!-- CREATE MODAL -->
+<div class="modal-overlay" id="create-modal" style="display:none" onclick="closeModal('create-modal',event)">
+  <div class="modal" style="max-width:580px">
+    <button class="modal-close" onclick="closeModal('create-modal')">&#x2715;</button>
+    <h2 style="margin-bottom:6px">Create New Election</h2>
+    <p style="font-size:.85rem;margin-bottom:24px;color:var(--text-dim)">Set a title and add at least 2 candidates.</p>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="input-group"><label>Election Title</label><input class="input" id="new-title" placeholder="e.g. Best Framework 2026"/></div>
+      <div class="input-group"><label>Description (optional)</label><input class="input" id="new-desc" placeholder="Brief description for voters"/></div>
+      <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px">
+        <div style="font-size:.82rem;font-weight:700;margin-bottom:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em">Candidates</div>
+        <div id="cand-inputs" style="display:flex;flex-direction:column;gap:8px"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%" onclick="addCandInput()">+ Add Candidate</button>
+      </div>
+      <button class="btn btn-primary btn-full" id="create-submit" onclick="submitCreate()">Create Election</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API='http://localhost:8000';
+let currentUser=null,currentToken=null,voteElectionId=null,selectedCand=null,selectedCandId=null;
+
+window.addEventListener('load',async()=>{
+  const s=localStorage.getItem('vs_user');
+  if(s){try{const u=JSON.parse(s);currentUser=u.username;currentToken=u.token;if(u.is_admin)document.getElementById('create-btn').style.display='';showDash();}catch{showAuth();}}
+  else showAuth();
+  setTimeout(()=>{const l=document.getElementById('loader');l.style.opacity='0';setTimeout(()=>l.style.display='none',500);},900);
+});
+
+function showAuth(){document.getElementById('auth-page').classList.add('active');document.getElementById('dashboard-page').classList.remove('active');}
+function showDash(){
+  document.getElementById('auth-page').classList.remove('active');
+  document.getElementById('dashboard-page').classList.add('active');
+  document.getElementById('nav-avatar').textContent=currentUser?currentUser[0].toUpperCase():'?';
+  document.getElementById('nav-username').textContent='@'+currentUser;
+  loadElections();
+}
+function switchTab(t){
+  ['login','register'].forEach(x=>{
+    document.getElementById('tab-'+x).classList.toggle('active',x===t);
+    document.getElementById('panel-'+x).classList.toggle('active',x===t);
+  });
+}
+async function handleRegister(){
+  const u=val('reg-username'),e=val('reg-email'),p=val('reg-password');
+  if(!u||!e||!p)return toast('Fill in all fields','error');
+  if(p.length<6)return toast('Password min 6 chars','error');
+  const btn=el('register-btn');setBtnLoad(btn,true);
+  try{await api('/auth/register','POST',{username:u,email:e,password:p});toast('Account created! Sign in now.','success');switchTab('login');el('login-username').value=u;}
+  catch(e){toast(e.message,'error');}finally{setBtnLoad(btn,false,'Create Account');}
+}
+async function handleLogin(){
+  const u=val('login-username'),p=val('login-password');
+  if(!u||!p)return toast('Fill in all fields','error');
+  const btn=el('login-btn');setBtnLoad(btn,true);
+  try{
+    const r=await api('/auth/login','POST',{username:u,password:p});
+    currentUser=r.username;currentToken=r.access_token;
+    localStorage.setItem('vs_user',JSON.stringify({username:r.username,token:r.access_token,is_admin:r.is_admin}));
+    if(r.is_admin)el('create-btn').style.display='';
+    toast('Welcome back, '+r.username+'!','success');showDash();
+  }catch(e){toast(e.message,'error');}finally{setBtnLoad(btn,false,'Sign In');}
+}
+function handleLogout(){localStorage.removeItem('vs_user');currentUser=null;currentToken=null;toast('Signed out','info');showAuth();}
+
+async function loadElections(){
+  const g=el('elections-grid');
+  g.innerHTML='<div class="empty-state"><span class="empty-icon">🔄</span><h3>Loading elections...</h3></div>';
+  try{
+    const es=await api('/elections');
+    el('stat-total').textContent=es.length;
+    el('stat-active').textContent=es.filter(e=>e.is_active).length;
+    el('stat-cands').textContent=es.reduce((a,e)=>a+e.candidate_count,0);
+    if(!es.length){g.innerHTML='<div class="empty-state"><span class="empty-icon">🗳️</span><h3>No elections yet</h3><p>An admin needs to create one.</p></div>';return;}
+    g.innerHTML=es.map(renderCard).join('');
+  }catch(e){toast('Load failed: '+e.message,'error');}
+}
+function renderCard(e){
+  const badge=e.is_active
+    ?'<span class="badge badge-active"><span class="badge-dot"></span>Live</span>'
+    :'<span class="badge badge-closed">Closed</span>';
+  const vBtn=e.is_active
+    ?`<button class="btn btn-primary btn-sm" onclick="openVote('${e.id}','${esc(e.title)}','${esc(e.description||'')}')">Vote Now</button>`
+    :'<button class="btn btn-outline btn-sm" disabled>Closed</button>';
+  return`<div class="card election-card">
+    <div class="election-card-top"><div class="election-title">${esc(e.title)}</div>${badge}</div>
+    <div class="election-desc">${esc(e.description||'No description provided.')}</div>
+    <div class="election-meta"><span>👥 ${e.candidate_count} candidate${e.candidate_count!==1?'s':''}</span></div>
+    <div class="election-actions">${vBtn}<button class="btn btn-outline btn-sm" onclick="openResults('${e.id}','${esc(e.title)}')">📊 Results</button></div>
+  </div>`;
+}
+
+async function openVote(eid,title,desc){
+  voteElectionId=eid;selectedCand=null;selectedCandId=null;
+  el('vote-title').textContent=title;el('vote-desc').textContent=desc;
+  el('submit-vote-btn').disabled=true;
+  const list=el('candidate-list');
+  list.innerHTML='<div style="text-align:center;padding:20px"><div class="spinner" style="margin:0 auto"></div></div>';
+  el('vote-modal').style.display='flex';
+  try{
+    const data=await api('/elections/'+eid+'/results');
+    list.innerHTML=data.results.length
+      ?data.results.map((c,i)=>`<div class="candidate-option" onclick="pickCand(this,'${esc(c.candidate)}','${esc(c.candidate_id)}')"  data-cid="${esc(c.candidate_id)}"><div class="radio-dot"></div><div><div class="cname">${esc(c.candidate)}</div></div><div class="cnum">${i+1}</div></div>`).join('')
+      :'<p style="text-align:center;color:var(--text-dim);padding:20px">No candidates yet.</p>';
+  }catch(e){list.innerHTML='<p style="color:var(--pink);padding:16px">Error: '+e.message+'</p>';}
+}
+function pickCand(el_,name,cid){
+  document.querySelectorAll('.candidate-option').forEach(o=>o.classList.remove('selected'));
+  el_.classList.add('selected');selectedCand=name;selectedCandId=cid;
+  el('submit-vote-btn').disabled=false;
+}
+async function submitVote(){
+  if(!selectedCand||!selectedCandId)return toast('Select a candidate','error');
+  const btn=el('submit-vote-btn');setBtnLoad(btn,true,'Casting...');
+  try{
+    await api('/elections/'+voteElectionId+'/vote?voter_username='+currentUser,'POST',{candidate_id:selectedCandId});
+    closeModal('vote-modal');
+    toast('Vote cast! Your ballot is anonymous and secure.','success');
+    setTimeout(()=>openResults(voteElectionId,el('vote-title').textContent),400);
+    loadElections();
+  }catch(e){toast(e.message,'error');}finally{setBtnLoad(btn,false,'Cast My Vote');}
+}
+
+async function openResults(eid,title){
+  el('res-title').textContent=title;el('res-sub').textContent='Live vote tally';el('res-total').textContent='';
+  const list=el('results-list');
+  list.innerHTML='<div style="text-align:center;padding:30px"><div class="spinner" style="margin:0 auto"></div></div>';
+  el('results-modal').style.display='flex';
+  try{
+    const d=await api('/elections/'+eid+'/results');
+    el('res-total').textContent='Total votes: '+d.total_votes;
+    const ranks=['gold','silver','bronze'];
+    list.innerHTML=d.results.map((r,i)=>`<div>
+      <div class="result-header">
+        <div class="result-name"><span class="rrank ${ranks[i]||''}">${i+1}</span>${esc(r.candidate)}</div>
+        <div style="font-size:.8rem;color:var(--text-dim)">${r.votes} vote${r.votes!==1?'s':''} &middot; ${r.percentage}%</div>
+      </div>
+      <div class="rbar-track"><div class="rbar ${i===0?'gold':''}" id="rb${i}"></div></div>
+    </div>`).join('');
+    requestAnimationFrame(()=>d.results.forEach((r,i)=>setTimeout(()=>{const b=document.getElementById('rb'+i);if(b)b.style.width=r.percentage+'%';},i*150)));
+  }catch(e){list.innerHTML='<p style="color:var(--pink);text-align:center">Error: '+e.message+'</p>';}
+}
+
+function openCreate(){
+  el('new-title').value='';el('new-desc').value='';
+  el('cand-inputs').innerHTML='';addCandInput();addCandInput();
+  el('create-modal').style.display='flex';
+}
+function addCandInput(){
+  const ci=el('cand-inputs'),n=ci.children.length+1;
+  const d=document.createElement('div');d.style.cssText='display:flex;gap:8px';
+  d.innerHTML='<input class="input" placeholder="Candidate '+n+'" style="flex:1"/><button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">&#x2715;</button>';
+  ci.appendChild(d);
+}
+async function submitCreate(){
+  const title=val('new-title'),desc=val('new-desc');
+  if(!title)return toast('Title required','error');
+  const names=[...document.querySelectorAll('#cand-inputs input')].map(i=>i.value.trim()).filter(Boolean);
+  if(names.length<2)return toast('Add at least 2 candidates','error');
+  const btn=el('create-submit');setBtnLoad(btn,true,'Creating...');
+  try{
+    const e=await api('/elections','POST',{title,description:desc});
+    for(const n of names)await api('/elections/'+e.election_id+'/candidates','POST',{name:n,description:''});
+    closeModal('create-modal');toast('"'+title+'" created!','success');loadElections();
+  }catch(e){toast(e.message,'error');}finally{setBtnLoad(btn,false,'Create Election');}
+}
+
+function closeModal(id,event){if(event&&event.target!==event.currentTarget)return;document.getElementById(id).style.display='none';}
+async function api(path,method='GET',body=null){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(currentToken)opts.headers['Authorization']='Bearer '+currentToken;
+  if(body)opts.body=JSON.stringify(body);
+  const r=await fetch(API+path,opts);
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.detail||'HTTP '+r.status);
+  return d;
+}
+function toast(msg,type='info'){
+  const icons={success:'✅',error:'❌',info:'ℹ️'};
+  const t=document.createElement('div');
+  t.className='toast toast-'+type;
+  t.innerHTML='<span style="font-size:1.1rem;flex-shrink:0">'+icons[type]+'</span><span>'+msg+'</span>';
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(()=>{t.style.cssText='opacity:0;transform:translateX(40px);transition:.3s';setTimeout(()=>t.remove(),300);},3500);
+}
+function setBtnLoad(btn,on,text=''){
+  if(on){btn._t=btn.innerHTML;btn.innerHTML='<div class="spinner"></div>'+(text||'Please wait...');btn.disabled=true;}
+  else{btn.innerHTML=btn._t||text;btn.disabled=false;}
+}
+function el(id){return document.getElementById(id);}
+function val(id){return(document.getElementById(id)||{}).value?.trim()||'';}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+['login-username','login-password'].forEach(id=>el(id)?.addEventListener('keydown',e=>e.key==='Enter'&&handleLogin()));
+['reg-username','reg-email','reg-password'].forEach(id=>el(id)?.addEventListener('keydown',e=>e.key==='Enter'&&handleRegister()));
+</script>
+</body>
+</html>

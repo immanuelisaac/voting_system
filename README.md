@@ -1,249 +1,180 @@
-﻿<div align="center">
+﻿# VoteSecure — Online Voting System
 
-# 🗳️ Online Voting System
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green?logo=fastapi)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-red)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-orange?logo=mysql)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-**A secure, anonymous, production-ready online voting platform**
-built with FastAPI · SQLAlchemy · MySQL · Vanilla JS
-
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.111+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://mysql.com)
-[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0+-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white)](https://sqlalchemy.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
-
-</div>
+A **secure, anonymous online voting platform** built with FastAPI, SQLAlchemy, and a modern glassmorphism UI.
+Ballot anonymity is enforced at the **database schema level** — no join path exists between a voter and their vote choice.
 
 ---
 
-## 📌 Overview
+## Live Features
 
-This project is a full-stack online voting system that prioritises **ballot anonymity** and **duplicate-vote prevention** at the database architecture level — not just at the application layer.
-
-The core privacy principle: **no single database query can ever link a voter's identity to their candidate choice.**
+- **User Auth** — Register & login with bcrypt-hashed passwords + JWT tokens
+- **Elections** — Create elections with multiple candidates
+- **Anonymous Voting** — Privacy firewall at the DB level; duplicate votes blocked
+- **Live Results** — Real-time animated bar charts
+- **Modern UI** — Dark glassmorphism single-page app (no framework, pure HTML/CSS/JS)
+- **SQLite Demo Mode** — Runs instantly with zero database setup
 
 ---
 
-## ✨ Features
+## Architecture — Privacy Firewall
 
-| Feature | Details |
+```
+┌─────────────────────────────────────────────────────────┐
+│                   PRIVACY FIREWALL                      │
+│                                                         │
+│  users        vote_casts       elections   candidates   │
+│  ┌──────┐    ┌──────────┐     ┌────────┐  ┌─────────┐  │
+│  │  id  │───▶│ user_id  │     │  id    │  │   id    │  │
+│  │ name │    │election_id│◀───│ title  │  │  name   │  │
+│  │ pass │    └──────────┘     └────────┘  └────┬────┘  │
+│  └──────┘    (WHO voted)      (WHAT election)  │       │
+│                                                │       │
+│              vote_tallies ◀────────────────────┘       │
+│              ┌───────────┐                             │
+│              │candidate_id│  (ANONYMOUS counts)         │
+│              │vote_count │                             │
+│              └───────────┘                             │
+│                                                         │
+│  ✅ No join path: users ↔ candidates                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
 |---|---|
-| 🔐 **Secure Auth** | bcrypt password hashing + JWT Bearer tokens |
-| 🎭 **Ballot Anonymity** | Identity and vote data live in completely separate tables |
-| 🚫 **Duplicate Prevention** | DB-level `UNIQUE` constraint — not just app logic |
-| ⚡ **Async API** | FastAPI + aiomysql for high-throughput, low-latency responses |
-| 🛡️ **Admin Controls** | Admins can create, open, and close elections |
-| 📊 **Live Results** | Real-time vote tallies without exposing voter identities |
-| 🌐 **Responsive UI** | Vanilla HTML/CSS/JS — no framework bloat |
+| **API** | Python 3.11 + FastAPI + Uvicorn |
+| **ORM** | SQLAlchemy 2.0 (async) |
+| **Database** | MySQL 8 (production) / SQLite (demo) |
+| **Auth** | bcrypt + JWT (PyJWT) |
+| **Frontend** | Vanilla HTML + CSS + JavaScript |
+| **Fonts** | Google Fonts — Inter |
 
 ---
 
-## 🏗️ Architecture
-
-### Privacy Firewall — The Core Design
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      IDENTITY LAYER                              │
-│   ┌──────────┐         ┌──────────────┐                         │
-│   │  users   │────────▶│  votes_cast  │  WHO voted in election Y │
-│   │          │         │  (receipt)   │  ← NO candidate_id here  │
-│   └──────────┘         └──────┬───────┘                         │
-└──────────────────────────────-│-────────────────────────────────┘
-                                │ election_id
-┌───────────────────────────────│-────────────────────────────────┐
-│                    BALLOT LAYER                 │                │
-│                          ┌────▼──────┐          │               │
-│                          │ elections │          │               │
-│                          └────┬──────┘          │               │
-│                               │                 │               │
-│                        ┌──────▼──────┐          │               │
-│                        │ candidates  │          │               │
-│                        └──────┬──────┘          │               │
-│                               │                 │               │
-│                        ┌──────▼──────┐          │               │
-│                        │vote_tallies │  HOW MANY votes ← NO user_id │
-│                        └─────────────┘                          │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**Key invariant:** `VoteCast` records *that* a user voted. `VoteTally` records *what* was voted for. These two tables share no column that can join them.
-
----
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 voting_system/
 ├── backend/
 │   ├── app/
-│   │   ├── __init__.py
-│   │   ├── database.py          # Async engine, session factory, get_db()
 │   │   ├── models/
-│   │   │   ├── __init__.py
-│   │   │   ├── base.py          # SQLAlchemy DeclarativeBase
-│   │   │   ├── user.py          # User model (identity only)
-│   │   │   ├── election.py      # Election + Candidate models
-│   │   │   └── vote.py          # VoteCast + VoteTally (privacy core)
-│   │   ├── api/                 # FastAPI routers (auth, elections, votes)
-│   │   │   └── __init__.py
-│   │   └── core/
-│   │       ├── __init__.py
-│   │       └── config.py        # Pydantic settings from .env
+│   │   │   ├── base.py        # Declarative base + UUID eager init
+│   │   │   ├── user.py        # User identity model
+│   │   │   ├── election.py    # Election + Candidate models
+│   │   │   └── vote.py        # VoteCast + VoteTally (privacy-separated)
+│   │   ├── core/
+│   │   │   └── config.py      # Pydantic settings (.env)
+│   │   ├── database.py        # Async engine + session factory
+│   │   └── main.py            # FastAPI app + all routes
+│   ├── test_models.py         # 11 offline unit tests (all passing)
 │   └── requirements.txt
-├── frontend/                    # HTML / CSS / JS UI
-├── .gitignore
-└── README.md
+└── frontend/
+    └── index.html             # Complete SPA — auth, voting, results
 ```
 
 ---
 
-## 🗄️ Database Schema
+## Quick Start (Demo — no MySQL needed)
 
-### `users` table
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | VARCHAR(36) PK | UUID — non-guessable |
-| `username` | VARCHAR(50) UNIQUE | Login handle |
-| `email` | VARCHAR(255) UNIQUE | Account recovery only |
-| `hashed_password` | VARCHAR(255) | bcrypt — raw passwords never stored |
-| `is_active` | BOOL | Soft-disable without deletion |
-| `is_admin` | BOOL | Can create/close elections |
-| `created_at` | DATETIME | UTC |
-
-### `elections` table
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | VARCHAR(36) PK | UUID |
-| `title` | VARCHAR(200) | Ballot name |
-| `is_active` | BOOL | Controls whether voting is open |
-| `start_time` / `end_time` | DATETIME | Scheduling info |
-
-### `candidates` table
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | VARCHAR(36) PK | UUID |
-| `election_id` | FK → elections | CASCADE delete |
-| `name` | VARCHAR(150) | Display name |
-
-### `votes_cast` table — *the participation receipt*
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | VARCHAR(36) PK | |
-| `user_id` | FK → users | Who voted |
-| `election_id` | FK → elections | In which election |
-| `voted_at` | DATETIME | Audit trail |
-| *(no candidate_id)* | — | **By design** |
-
-> 🔒 `UNIQUE(user_id, election_id)` — DB enforces one ballot per user per election.
-
-### `vote_tallies` table — *the anonymous counter*
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | VARCHAR(36) PK | |
-| `candidate_id` | FK → candidates UNIQUE | One row per candidate |
-| `vote_count` | INT | Incremented atomically |
-| *(no user_id)* | — | **By design** |
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Python 3.11+
-- MySQL 8.0+ (running locally or via Docker)
-- Git
-
-### 1. Clone the repository
 ```bash
-git clone https://github.com/immanuelisaac/voting_system.git
-cd voting_system
-```
+# 1. Clone
+git clone git@github.com:immanuelisaac/voting_system.git
+cd voting_system/backend
 
-### 2. Create and activate a virtual environment
-```bash
-# Windows
-python -m venv .venv
-.venv\Scripts\activate
-
-# macOS / Linux
-python -m venv .venv
-source .venv/bin/activate
-```
-
-### 3. Install dependencies
-```bash
-cd backend
+# 2. Install dependencies
 pip install -r requirements.txt
+pip install aiosqlite PyJWT
+
+# 3. Run (SQLite demo mode)
+$env:USE_SQLITE="True"   # PowerShell
+python -m uvicorn app.main:app --port 8000 --reload
+
+# 4. Open the UI
+# Double-click: voting_system/frontend/index.html
 ```
 
-### 4. Configure environment variables
-```bash
-# Create a .env file in backend/ — never commit this file
-cp .env.example .env   # or create it manually
-```
+**API Docs:** http://localhost:8000/docs  
+**UI:** Open `frontend/index.html` directly in your browser
 
-`.env` contents:
-```env
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=voting_db
-SECRET_KEY=your_secret_key_here   # openssl rand -hex 32
-DEBUG=True
-DB_ECHO=False
-```
+---
 
-### 5. Create the MySQL database
-```sql
-CREATE DATABASE voting_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
+## API Endpoints
 
-### 6. Run the server
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | Health check |
+| `GET` | `/health` | DB connectivity check |
+| `POST` | `/auth/register` | Register a new user |
+| `POST` | `/auth/login` | Login → returns JWT |
+| `GET` | `/elections` | List all elections |
+| `POST` | `/elections` | Create election (admin) |
+| `POST` | `/elections/{id}/candidates` | Add candidate |
+| `POST` | `/elections/{id}/vote` | Cast anonymous vote |
+| `GET` | `/elections/{id}/results` | Live results with % |
 
-### 7. Open API docs
+---
+
+## Database Schema
+
+### `users`
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | Primary key |
+| username | VARCHAR | Unique |
+| email | VARCHAR | Unique |
+| hashed_password | TEXT | bcrypt |
+| is_admin | BOOL | Default false |
+| is_active | BOOL | Default true |
+
+### `vote_casts` — WHO voted (no candidate info)
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | Primary key |
+| user_id | FK→users | |
+| election_id | FK→elections | |
+| — | — | **UNIQUE(user_id, election_id)** |
+
+### `vote_tallies` — Anonymous counts (no user info)
+| Column | Type | Notes |
+|---|---|---|
+| candidate_id | FK→candidates | |
+| vote_count | INT | Incremented atomically |
+
+---
+
+## Test Results
+
 ```
-http://localhost:8000/docs       ← Swagger UI
-http://localhost:8000/redoc      ← ReDoc
+11 tests passed in < 1s (offline, no DB required)
+✓ Model imports
+✓ Table names
+✓ Privacy invariants (no user→candidate join)
+✓ Unique constraints
+✓ UUID defaults at instantiation time
 ```
 
 ---
 
-## 🔧 Development Roadmap
+## Development Roadmap
 
-| Module | Status | Description |
-|--------|--------|-------------|
-| **Module 1** — DB Schema | ✅ Complete | SQLAlchemy models with privacy separation |
-| **Module 2** — Auth API | 🔄 In Progress | Register, Login, JWT middleware |
-| **Module 3** — Voting API | ⏳ Pending | Cast vote, results endpoints |
-| **Module 4** — Admin API | ⏳ Pending | Create/manage elections & candidates |
-| **Module 5** — Frontend | ⏳ Pending | Responsive HTML/CSS/JS UI |
-
----
-
-## 🔐 Security Considerations
-
-- Passwords are **never stored in plaintext** — bcrypt with salt rounds
-- JWT tokens expire after a configurable window (default: 60 min)
-- The `SECRET_KEY` must be generated with `openssl rand -hex 32` and stored in `.env`
-- `.env` is in `.gitignore` and must **never** be committed
-- Vote anonymity is guaranteed at the **schema level**, not just the application level
-- All DB writes use parameterised queries via SQLAlchemy (no raw SQL, no injection risk)
+- [x] Module 1 — Database schema & privacy firewall
+- [x] Module 2 — FastAPI REST API (auth + voting + results)
+- [x] Module 3 — Frontend SPA (glassmorphism dark UI)
+- [ ] Module 4 — JWT middleware (protected routes)
+- [ ] Module 5 — Admin panel (election management)
+- [ ] Module 6 — Production MySQL deployment
 
 ---
 
-## 🤝 Contributing
+## License
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/your-feature`
-3. Commit with conventional commits: `git commit -m "feat: add X"`
-4. Push and open a Pull Request
-
----
-
-## 📄 License
-
-MIT © [immanuelisaac](https://github.com/immanuelisaac)
+MIT — see [LICENSE](LICENSE)
